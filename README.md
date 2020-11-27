@@ -198,12 +198,60 @@ BOOST_PYTHON_MODULE(hello) {
 Defining methods is achieved using *def* family methods and *staticmethod* function used to declare methods as static. 
 
 
+## TODO
 
 
 #### Data members and properties
 
+Data members may also be exposed to Python so that they can be accessed as attributes of the corresponding Python class. Each data member that we wish to be exposed may be read-only or read-write. Members and static members can be exposed using *def_readonly* and *def_readwrite* methods.
 
-Properties could be for read only or for read&write.
+```cpp
+class class_ : public object {
+	...
+	// exposing data members
+	template <class D>
+	class_& def_readonly(char const* name, D T::*pm);
+	template <class D>
+	class_& def_readwrite(char const* name, D T::*pm);
+	// exposing static data members
+	template <class D>
+	class_& def_readonly(char const* name, D const& d);
+	template <class D>
+	class_& def_readwrite(char const* name, D& d);
+	...
+};
+```
+
+Consider example - point with members x and y, counting instances.
+
+```cpp
+#include <boost/python.hpp>
+using namespace boost::python;
+
+struct Point {
+	Point(int x, int y) : x(x), y(y) { ++count; }
+	~Point() { --count; )
+	int x;
+	int y;
+	static size_t count;
+};
+
+Point::count = 0;
+
+BOOST_PYTHON_MODULE(hello) {
+	class_<Point>(init<int, int>(args("x", "y"), "Constructor for class point")
+		.def_readwrite("x", &Point::x)
+		.def_readwrite("y", &Point::y)
+		.def_readonly("pointsCount", &Point:count)
+  	;
+}
+```
+
+In C++, classes with public data members are usually frowned upon. 
+Well designed classes that take advantage of encapsulation hide the class data members. 
+The only way to access the class data is through access (getter/setter) functions. 
+Access functions expose class properties. 
+However, in Python attribute access is fine, it does not neccessarily break encapsulation to let users handle attributes directly, because the attributes can just be a different syntax for a method call.
 
 ```cpp
 class class_ : public object {
@@ -214,15 +262,6 @@ class class_ : public object {
   	template <class Get, class Set>
   	void add_property(
 	char const* name, Get const& fget, Set const& fset, char const* doc=0);
-	...
-};
-```
-
-Property could be also static
-
-```cpp
-class class_ : public object {
-	...
   	// static property creation
   	template <class Get>
 	void add_static_property(char const* name, Get const& fget);
@@ -260,7 +299,7 @@ Point::count = 0;
 BOOST_PYTHON_MODULE(hello) {
 	class_<Point>(init<int, int>(args("x", "y"), "Constructor for class point")
 		.add_property("readOnlyX", &Point::getX, "Read only property X")
-		.add_property("X", &Point::getX, &Point::setX, "Property X")
+		.add_property("x", &Point::getX, &Point::setX, "Property X")
 		.add_property("readOnlyY", &Point::getY, "Read only property Y")
 		.add_property("y", &Point::getY, &Point::setY, "Property Y")
 		.add_static_property("pointsCount", &Point:getCount)
@@ -270,23 +309,79 @@ BOOST_PYTHON_MODULE(hello) {
 
 #### Inheritance
 
-
+## TODO
 
 #### Virtual functions
 
-
+## TODO
 
 ## Python operators and special methods
 
+C++ has a lot of well defined operators and allows operator overloading for new types.
+Boost.Python takes advantage of this and makes it easy to wrap C++ operator-powered classes.
 
+Consider a file position class FilePos and a set of operators that take on FilePos instances:
+
+```cpp
+class FilePos { /*...*/ };
+
+FilePos     operator+(FilePos, int);
+FilePos     operator+(int, FilePos);
+int         operator-(FilePos, FilePos);
+FilePos     operator-(FilePos, int);
+FilePos&    operator+=(FilePos&, int);
+bool        operator<(FilePos, FilePos);
+```
+
+The class and the various operators can be mapped to Python rather easily and intuitively.
+The code snippet above is very clear and needs almost no explanation at all. 
+It is virtually the same as the operators signatures. 
+Just take note that self refers to FilePos object. 
+
+```cpp
+class_<FilePos>("FilePos")
+    .def(self + int())          // __add__
+    .def(int() + self)          // __radd__
+    .def(self - self)           // __sub__
+    .def(self - int())          // __sub__
+    .def(self += int())         // __iadd__
+	.def(self -= int())			// __isub__
+    .def(self < self);          // __lt__
+```
+
+Python has a few Special Methods - like for example *str()*. 
+Boost.Python supports all of the standard special method names supported by real Python class instances.
+A similar set of intuitive interfaces can also be used to wrap C++ functions that correspond to these Python special functions. 
+
+Example:
+
+```cpp
+class Rational
+{ public: operator double() const; };
+
+Rational pow(Rational, Rational);
+Rational abs(Rational);
+ostream& operator<<(ostream&,Rational);
+
+BOOST_PYTHON_MODULE(hello) {
+	class_<Rational>("Rational")
+    	.def(float_(self))                  // __float__
+    	.def(pow(self, other<Rational>))    // __pow__
+    	.def(abs(self))                     // __abs__
+    	.def(str(self))                     // __str__
+    ;
+}
+```
+
+Please note that *operator<<* is used by the method defined by def(str(self))
 
 ## References, copies and limitations
 
-
+## TODO
 
 ### Call policy
 
-
+## TODO
 
 ###### Sources
 
