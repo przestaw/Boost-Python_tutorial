@@ -19,7 +19,7 @@ using namespace boost::python;
 
 // first we need to define some function - in this case square
 int square( int a ) {
-	return a*a;
+  return a*a;
 }
 
 // second create module named "example"
@@ -90,16 +90,16 @@ Consider a basic example:
 using namespace boost::python;
 
 struct World {
-    void set(std::string msg) { this->msg = msg; }
-    std::string greet() { return msg; }
-    std::string msg;
+  void set(std::string msg) { this->msg = msg; }
+  std::string greet() { return msg; }
+  std::string msg;
 };
 
 BOOST_PYTHON_MODULE(hello) {
-    class_<World>("World")
-        .def("greet", &World::greet)
-        .def("set", &World::set)
-    ;
+  class_<World>("World")
+    .def("greet", &World::greet)
+    .def("set", &World::set)
+  ;
 }
 ```
 
@@ -149,7 +149,7 @@ Let's see that with some examples.
 using namespace boost::python;
 
 struct World {
-	World(std::string msg): msg(msg) {} // added constructor
+  World(std::string msg): msg(msg) {} // added constructor
   void set(std::string msg) { this->msg = msg; }
   std::string greet() { return msg; }
   std::string msg;
@@ -179,10 +179,10 @@ struct Point {
 
 BOOST_PYTHON_MODULE(hello) {
   class_<Point>(init<>("Default constructor"))
-		.def(init<int>(args("val"), "Constructor for diagonal points")
-		.def(init<int, int>(args("x", "y"), "Constructor for class point")
+    .def(init<int>(args("val"), "Constructor for diagonal points")
+    .def(init<int, int>(args("x", "y"), "Constructor for class point")
     .def_readwrite("x", &Point::x)
-		.def_readwrite("y", &Point::y)
+    .def_readwrite("y", &Point::y)
   ;
 }
 ```
