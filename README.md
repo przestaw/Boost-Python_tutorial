@@ -19,14 +19,14 @@ using namespace boost::python;
 
 // first we need to define some function - in this case square
 int square( int a ) {
-  return a*a;
+	return a*a;
 }
 
 // second create module named "example"
 BOOST_PYTHON_MODULE(example) {
 
-  // lastly expose our function in module "example"
-  def("square", &square, "Returns a square of given number");
+	// lastly expose our function in module "example"
+	def("square", &square, "Returns a square of given number");
 }
 ```
 	
@@ -90,16 +90,16 @@ Consider a basic example:
 using namespace boost::python;
 
 struct World {
-  void set(std::string msg) { this->msg = msg; }
-  std::string greet() { return msg; }
-  std::string msg;
+	void set(std::string msg) { this->msg = msg; }
+	std::string greet() { return msg; }
+	std::string msg;
 };
 
 BOOST_PYTHON_MODULE(hello) {
-  class_<World>("World")
-    .def("greet", &World::greet)
-    .def("set", &World::set)
-  ;
+	class_<World>("World")
+		.def("greet", &World::greet)
+		.def("set", &World::set)
+  	;
 }
 ```
 
@@ -124,10 +124,10 @@ Init expressions have syntax:
 ```cpp
 template <T1 = unspecified,...Tn = unspecified>
 struct init {
-  init(char const* doc = 0);
-  template <class Keywords>
+  	init(char const* doc = 0);
+  	template <class Keywords>
 	init(Keywords const& kw, char const* doc = 0);
-  template <class Keywords>
+  	template <class Keywords>
 	init(char const* doc, Keywords const& kw);
 };
 ```
@@ -141,6 +141,12 @@ template <class Init>
 class_& def(Init init_expr);
 ```
 
+If we do not want to expose any constructor at all, we may use *no_init*.
+
+```cpp
+class_<Abstract>("Abstract", no_init)
+```
+
 Let's see that with some examples.
 
 - Example 1 - constructor added to class world
@@ -149,17 +155,17 @@ Let's see that with some examples.
 using namespace boost::python;
 
 struct World {
-  World(std::string msg): msg(msg) {} // added constructor
-  void set(std::string msg) { this->msg = msg; }
-  std::string greet() { return msg; }
-  std::string msg;
+	World(std::string msg): msg(msg) {} // added constructor
+  	void set(std::string msg) { this->msg = msg; }
+  	std::string greet() { return msg; }
+  	std::string msg;
 };
 
 BOOST_PYTHON_MODULE(hello) {
-  class_<World>("World", init<std::string>(args("msg"), "Constructor for class World"))
-        .def("greet", &World::greet)
-        .def("set", &World::set)
-    ;
+	class_<World>("World", init<std::string>(args("msg"), "Constructor for class World"))
+		.def("greet", &World::greet)
+		.def("set", &World::set)
+	;
 }
 ```
 
@@ -170,7 +176,7 @@ BOOST_PYTHON_MODULE(hello) {
 using namespace boost::python;
 
 struct Point {
-	Point() x(0), y(0) {}
+	Point() : x(0), y(0) {}
 	Point(int val) : x(val), y(val) {}
 	Point(int x, int y) : x(x), y(y) {}
 	int x;
@@ -178,22 +184,89 @@ struct Point {
 };
 
 BOOST_PYTHON_MODULE(hello) {
-  class_<Point>(init<>("Default constructor"))
-    .def(init<int>(args("val"), "Constructor for diagonal points")
-    .def(init<int, int>(args("x", "y"), "Constructor for class point")
-    .def_readwrite("x", &Point::x)
-    .def_readwrite("y", &Point::y)
-  ;
+	class_<Point>(init<>("Default constructor"))
+		.def(init<int>(args("val"), "Constructor for diagonal points")
+		.def(init<int, int>(args("x", "y"), "Constructor for class point")
+		.def_readwrite("x", &Point::x)
+		.def_readwrite("y", &Point::y)
+  	;
 }
 ```
 
 #### Methods
+
+Defining methods is achieved using *def* family methods and *staticmethod* function used to declare methods as static. 
+
 
 
 
 #### Data members and properties
 
 
+Properties could be for read only or for read&write.
+
+```cpp
+class class_ : public object {
+	...
+  	// property creation
+  	template <class Get>
+  	void add_property(char const* name, Get const& fget, char const* doc=0);
+  	template <class Get, class Set>
+  	void add_property(
+	char const* name, Get const& fget, Set const& fset, char const* doc=0);
+	...
+};
+```
+
+Property could be also static
+
+```cpp
+class class_ : public object {
+	...
+  	// static property creation
+  	template <class Get>
+	void add_static_property(char const* name, Get const& fget);
+	template <class Get, class Set>
+	void add_static_property(char const* name, Get const& fget, Set const& fset);
+	...
+};
+```
+
+Lets see this in an example.
+
+```cpp
+#include <boost/python.hpp>
+using namespace boost::python;
+
+class Point {
+public:
+	Point(int x, int y) : x(x), y(y) { ++count; }
+	~Point() { --count; )
+	
+	int getX() { return x; }
+	int getY() { return y; }
+	void setX(int val) { x = val; }
+	void setY(int val) { y = val; }
+	
+	static int getCount() { return count; }
+private:	
+	int x;
+	int y;
+	static size_t count;
+};
+
+Point::count = 0;
+
+BOOST_PYTHON_MODULE(hello) {
+	class_<Point>(init<int, int>(args("x", "y"), "Constructor for class point")
+		.add_property("readOnlyX", &Point::getX, "Read only property X")
+		.add_property("X", &Point::getX, &Point::setX, "Property X")
+		.add_property("readOnlyY", &Point::getY, "Read only property Y")
+		.add_property("y", &Point::getY, &Point::setY, "Property Y")
+		.add_static_property("pointsCount", &Point:getCount)
+  	;
+}
+```
 
 #### Inheritance
 
