@@ -290,6 +290,6 @@ BOOST_PYTHON_MODULE(hello) {
 
 ###### Sources
 
-[Reference Manual for Boost.Python](https://www.boost.org/doc/libs/1_64_0/libs/python/doc/html/reference/)
-[*Building Hybrid Systems with Boost.Python*](https://www.boost.org/doc/libs/1_64_0/libs/python/doc/html/article.html)
-[Boost.Python sources](https://github.com/boostorg/python)
+1. [Reference Manual for Boost.Python](https://www.boost.org/doc/libs/1_64_0/libs/python/doc/html/reference/)
+2. [*Building Hybrid Systems with Boost.Python*](https://www.boost.org/doc/libs/1_64_0/libs/python/doc/html/article.html)
+3. [Boost.Python sources](https://github.com/boostorg/python)
