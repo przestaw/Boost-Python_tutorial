@@ -51,7 +51,28 @@ Each of them can have separate documenting string given as last argument.
 To expose a function we use a call to function *def*. 
 We give a name to our function which may or may not correspond with name given in a Cpp source.
 We must provide pointer to a function to bind it with a given name.
-A good practise is to give document each function with a string at the end.
+A good practise is to give document each function with a docstring.
+
+```cpp
+template <class Fn>
+void def(char const* name, Fn fn);
+
+template <class Fn, class A1>
+void def(char const* name, Fn fn, A1 const&);
+
+template <class Fn, class A1, class A2>
+void def(char const* name, Fn fn, A1 const&, A2 const&);
+
+template <class Fn, class A1, class A2, class A3>
+void def(char const* name, Fn fn, A1 const&, A2 const&, A3 const&);
+```
+
+Functions from *def* family takes 2 to 5 arguments.
+- *name* - function name in python convention
+- *fn* - function pointer
+- a1-a3 - docstring, keywords or policies in any possible order
+
+Lets see an example:
 
 ```cpp
 // expose function myNamespace::square with name "squareInt"
