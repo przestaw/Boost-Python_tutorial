@@ -26,7 +26,7 @@ int square( int a ) {
 BOOST_PYTHON_MODULE(example) {
 
 	// lastly expose our function in module "example"
-	def("square", &square, "Returns a square of given number");
+	def("square", square, "Returns a square of given number");
 }
 ```
 	
@@ -72,14 +72,34 @@ Functions from *def* family takes 2 to 5 arguments.
 - *fn* - function pointer
 - a1-a3 - docstring, keywords or policies in any possible order
 
-Lets see an example:
+Docstring is a brief documentation of a function, similar to a docstring in a first line of a python function.
+Keywords object holds a sequence of arguments names, and whose type encodes the number of keywords specified. The keyword-expression may contain default values for some or all of the keywords it holds.
+
+An example of keywords usage:
+
+```cpp
+#include <boost/python/def.hpp>
+using namespace boost::python;
+
+int foo(double x, double y, double z=0.0, double w=1.0);
+
+BOOST_PYTHON_MODULE(xxx)
+{
+   def("foo", foo
+            , ( arg("x"), "y", arg("z")=0.0, arg("w")=1.0 ) 
+            );
+}
+```
+
+Another example with our square function:
 
 ```cpp
 // expose function myNamespace::square with name "squareInt"
 // first argument is function named
 // second argument is function pointer
 // third (optional) argument is documentation delivered in module
-def("squareInt", &myNamespace::square, "Returns a square of given number");
+// fourth (optional) argument is argument name
+def("squareInt", &myNamespace::square, "Returns a square of given number", arg("number"));
 ```
 	
 We may also expose specialisation of template function as python function.
@@ -96,9 +116,9 @@ We may expose it both for python integer and floating types, and give it diffren
 
 ```cpp
 // expose function square for floating point
-def("squareFloat", &square<double>, "Returns a square of given number");
+def("squareFloat", square<double>, "Returns a square of given number");
 // expose function square for integer
-def("squareInt", &square<int>, "Returns a square of given number");
+def("squareInt", square<int>, "Returns a square of given number");
 ```
 	
 ### Exposing Classes
@@ -217,10 +237,72 @@ BOOST_PYTHON_MODULE(hello) {
 #### Methods
 
 Defining methods is achieved using *def* family methods and *staticmethod* function used to declare methods as static. 
+Syntax and behaviour in similar way to function definition with the diffrence chaining of *def* calls to define multiple methods.
 
+```cpp
+#include <boost/python.hpp>
+using namespace boost::python;
 
-## TODO
+class class_ : public object {
+	...
+    // defining methods
+    template <class F>
+    class_& def(char const* name, F f);
+    template <class Fn, class A1>
+    class_& def(char const* name, Fn fn, A1 const&);
+    template <class Fn, class A1, class A2>
+    class_& def(char const* name, Fn fn, A1 const&, A2 const&);
+    template <class Fn, class A1, class A2, class A3>
+    class_& def(char const* name, Fn fn, A1 const&, A2 const&, A3 const&);
 
+    // declaring method as static
+    class_& staticmethod(char const* name);
+    ...
+};
+```
+
+Simple example of defining methods
+
+```cpp
+#include <boost/python.hpp>
+using namespace boost::python;
+
+// Simple class
+class hello {
+    public:
+        hello(const std::string& country) { this->country = country; }
+        std::string greet() const { return "Hello from " + country; }
+    private:
+        std::string country;
+};
+
+// A function taking a hello object as an argument.
+std::string invite(const hello& w) {
+    return w.greet() + "! Please come soon!";
+}
+
+BOOST_PYTHON_MODULE(hello) {
+    class_<hello>("hello", init<std::string>())
+        .def("greet", &hello::greet)  // Add a regular member function.
+        .def("invite", invite)  // Add invite() as a regular function to the module.
+    ;
+
+    def("invite", invite); // invite() can also be made a member of module!!!
+}
+```
+
+Then we can use our methods and functions in python like so:
+
+```python
+>>> from getting_started2 import *
+>>> hi = hello('Poland')
+>>> hi.greet()
+'Hello from Poland'
+>>> invite(hi)
+'Hello from Poland! Please come soon!'
+>>> hi.invite()
+'Hello from Poland! Please come soon!'
+```
 
 #### Data members and properties
 
@@ -333,6 +415,10 @@ BOOST_PYTHON_MODULE(hello) {
 ## TODO
 
 #### Virtual functions
+
+## TODO
+
+#### Copy policy & smart pointers
 
 ## TODO
 
