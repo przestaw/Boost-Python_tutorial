@@ -552,7 +552,7 @@ class_<FilePos>("FilePos")
     .def(self - self)           // __sub__
     .def(self - int())          // __sub__
     .def(self += int())         // __iadd__
-	.def(self -= int())			// __isub__
+    .def(self -= int())			// __isub__
     .def(self < self);          // __lt__
 ```
 
