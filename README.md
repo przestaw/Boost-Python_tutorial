@@ -418,9 +418,109 @@ BOOST_PYTHON_MODULE(hello) {
 
 ## TODO
 
-#### Copy policy & smart pointers
+### Call policy
 
-## TODO
+*CallPolicy* allows boost.python to deal with raw references and pointers. 
+Different policies specifies different strategies of managing object ownership. 
+
+#### return_internal_reference
+
+Builds a Python object around a pointer to the C++ result object (which must have a *class_<>* wrapper somewhere), and applies some lifetime management to keep the "self" object alive as long as the Python result is alive. NULL pointer returning as None. 
+
+#### return_value_policy<reference_existing_object>
+
+naïve (and dangerous) approach
+
+When the wrapped function is called, the value referenced by its return value is not copied.
+A new Python object is created which contains an unowned U* pointer to the referent of the wrapped function's return value, and no attempt is made to ensure that the lifetime of the referent is at least as long as that of the corresponding Python object.
+
+This class is used in the implementation of return_internal_reference. Also NULL pointer returning as None. 
+
+#### return_value_policy<manage_new_object>
+
+Can be used to wrap C++ functions returning a pointer to an object allocated with a *new-expression* and expecting the caller to take responsibility for deleting that C++ object from heap. 
+Boost.Python will do it as part of Python object destruction. 
+
+```cpp
+T* factory() { return new T(); }
+
+class_<T>("T");
+
+def("Tfactory", factory, return_value_policy<manage_new_object>() );
+```
+
+#### with_custodian_and_ward<M,N>
+
+Keeps N-th argument as long as M-th is alive.
+
+Use of template parameters M,N:
+
+    1 - 1st argument (self for method calls)
+    2 - 2nd argument (1st for method calls)
+    ... 
+
+For example, container operation append usualy uses with_custodian_and_ward<1,2> which means keep argument alive while container itself is alive.
+
+#### with_custodian_and_ward_postcall<M,N>
+
+ties lifetimes of the arguments and results
+
+M,N same as before but also you can use 0 - result 
+
+#### Memory & smart pointers
+
+Since Python handles memory allocation and garbage collection automatically, the concept of a "pointer" is not meaningful in Python. 
+However, many C++ APIs expose either raw pointers or shared pointers.
+
+##### Raw pointers
+
+The lifetime of C++ objects created by *new* A can be handled by Python's garbage collection by using the *manage_new_object* return policy: 
+
+```cpp
+struct A {
+    static A*   create () { return new A; }
+    std::string hello  () { return "Hello, is there anybody in there?"; }
+};
+
+BOOST_PYTHON_MODULE(pointer)
+{
+    class_<A>("A",no_init)
+        .def("create",&A::create, return_value_policy<manage_new_object>())
+        .staticmethod("create")
+        .def("hello",&A::hello)
+	;
+}
+```
+
+#### Smart pointers
+
+The usage of smart pointers (e.g. boost::shared_ptr<T>) is another common way to give away ownership of objects in C++. 
+These kinds of smart pointer are automatically handled if you declare their existence when declaring the class to boost::python. 
+This is done by including the holding type as a template parameter to class_<>, like in the following example: 
+
+```cpp
+#include <string>
+#include <boost/shared_ptr.hpp>
+#include <boost/python.hpp>
+
+using namespace boost;
+using namespace std;
+using namespace boost::python;
+
+struct A {
+    static shared_ptr<A> create () { return shared_ptr<A>(new A); }
+    std::string   hello  () { return "Just nod if you can hear me!"; }
+};
+
+BOOST_PYTHON_MODULE(shared_ptr)
+{
+    class_<A, shared_ptr<A> >("A",init<>())
+        .def("create",&A::create )
+        .staticmethod("create")
+        .def("hello",&A::hello)
+    ;
+}
+```
 
 ## Python operators and special methods
 
@@ -482,16 +582,42 @@ BOOST_PYTHON_MODULE(hello) {
 
 Please note that *operator<<* is used by the method defined by def(str(self))
 
-## References, copies and limitations
+## Build
 
-## TODO
+Standard way to build boost.python program is to use bjam, used also to build boost.python itself.
+Below are examples of using SCons and CMake build systems to build example aplication.
 
-### Call policy
+### SCons
 
-## TODO
+```python
+BOOST_VERSION = 'boost.cvs'
+BOOST = '/usr/local/src/' + BOOST_VERSION
+BOOSTLIBPATH = BOOST+'/stage/lib'
+env = Environment (LIBPATH=['./',BOOSTLIBPATH], CPPPATH=[BOOST, '/usr/include/python'],  
+                   RPATH=['./',BOOSTLIBPATH])
+env.SharedLibrary (target='uvector', source='uvector.cc', SHLIBPREFIX='', LIBS=[BOOST_PYTHON_LIB])
+```
 
-###### Sources
+### CMake
 
-1. [Reference Manual for Boost.Python](https://www.boost.org/doc/libs/1_64_0/libs/python/doc/html/reference/)
-2. [*Building Hybrid Systems with Boost.Python*](https://www.boost.org/doc/libs/1_64_0/libs/python/doc/html/article.html)
+```cmake
+cmake_minimum_required(VERSION 3.5)
+
+SET(ENV{BOOST_ROOT} "/path/to/my/boost") # set if find_pacgae fails with default paths
+
+find_package(Boost COMPONENTS python REQUIRED)
+find_package(PythonLibs 3.6 REQUIRED)
+
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
+
+ADD_LIBRARY(MyLibrary SHARED MyLibraryInterface.cpp)
+TARGET_LINK_LIBRARIES(MyLibrary "Boost::python" ${PYTHON_LIBRARIES})
+```
+
+##### Sources & further reading
+
+1. [Reference Manual for Boost.Python](https://www.boost.org/doc/libs/1_66_0/libs/python/doc/html/reference/)
+2. [*Building Hybrid Systems with Boost.Python*](https://www.boost.org/doc/libs/1_66_0/libs/python/doc/html/article.html)
 3. [Boost.Python sources](https://github.com/boostorg/python)
+4. [Detailed CallPolicy](https://www.boost.org/doc/libs/1_66_0/libs/python/doc/html/reference/function_invocation_and_creation/models_of_callpolicies.html)
