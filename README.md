@@ -183,9 +183,12 @@ class_& def(Init init_expr);
 ```
 
 If we do not want to expose any constructor at all, we may use *no_init*.
+Also if provided class is abstract [pure virtual] we need tell it that class is noncopyable, Boost.Python tries to register a converter for handling wrapped functions which handle function returning values of class type. 
+Naturally, this has to be able to copy construct the returned C++ class object into storage that can be managed by a Python object. 
+Since this is an abstract class, that would fail. 
 
 ```cpp
-class_<Abstract>("Abstract", no_init)
+class_<Abstract, boost::noncopyable>("Abstract", no_init)
 ```
 
 Let's see that with some examples.
@@ -412,11 +415,123 @@ BOOST_PYTHON_MODULE(hello) {
 
 #### Inheritance
 
-## TODO
+Boost.Python extension classes support single and multiple-inheritance in Python, just like regular Python classes. 
+We can arbitrarily mix built-in Python classes with extension classes in a derived class' tuple of bases. 
+Whenever a Boost.Python extension class is among the bases for a new class in Python, the result is an extension class.
+In module definition we use template argument *bases<...>* to pass information about inheritance to *class_*.
+
+Example :
+```cpp
+struct Base { virtual ~Base(); };
+struct Derived : Base {};
+
+void b(Base*);
+void d(Derived*);
+Base* factory() { return new Derived; }
+
+BOOST_PYTHON_MODULE(inheritance) {
+    class_<Base>("Base")
+    /*...*/
+    ;
+    class_<Derived, bases<Base> >("Derived")
+    /*...*/
+    ;
+    def("b", b);
+    def("d", d);
+    // Tell Python to take ownership of factory's result
+    def("factory", factory, return_value_policy<manage_new_object>());
+}
+```
 
 #### Virtual functions
 
-## TODO
+Bosst.Python classes can behave polymorphically through virtual functions.
+Consider *Base* class extending previous example.
+
+```cpp
+struct Base {
+    virtual ~Base() {}
+    virtual int f() = 0;
+};
+```
+
+One of the goals of Boost.Python is to be minimally intrusive on an existing C++ design. 
+In principle, it should be possible to expose the interface for a 3rd party library without changing it. 
+It is not ideal to add anything to our class Base. 
+Yet, when we have a virtual function that's going to be overridden in Python and called polymorphically from C++, we'll need to add some scaffoldings to make things work properly. 
+What we'll do is write a class wrapper that derives from Base that will unintrusively hook into the virtual functions so that a Python override may be called: 
+
+```cpp
+struct BaseWrap : Base, wrapper<Base> {
+    int f() {
+        return this->get_override("f")();
+    }
+};
+```
+
+Notice too that in addition to inheriting from Base, we also multiply inherited *wrapper<Base>*. 
+The wrapper template makes the job of wrapping classes that are meant to overridden in Python, easier.
+We signal that our class is pure virtual using *pure_virtual*.
+
+```cpp
+class_<BaseWrap, boost::noncopyable>("Base")
+    .def("f", pure_virtual(&Base::f))
+;
+```
+
+But what if *f()* was not pure virtual?
+
+```cpp
+struct Base {
+    virtual ~Base() {}
+    virtual int f() { return 0; }
+};
+```
+
+We need to construct our wrapper to handle default implementation.
+
+```cpp
+struct BaseWrap : Base, wrapper<Base>
+{
+    int f()
+    {
+        if (override f = this->get_override("f")) {
+            return f(); 
+		} else { 
+        	return Base::f();
+		}
+    }
+
+    int default_f() { return this->Base::f(); }
+};
+```
+
+Take note that we expose both *&Base::f* and *&BaseWrap::default_f*. 
+Boost.Python needs to keep track of 
+	1. the dispatch function f
+	2. the forwarding function to its default implementation default_f.
+There's a special def function for this purpose. 
+
+```cpp
+class_<BaseWrap, boost::noncopyable>("Base")
+    .def("f", &Base::f, &BaseWrap::default_f)
+;
+```
+
+In Python, the results would be as expected: 
+
+```python
+>>> base = Base()
+>>> class Derived(Base):
+...     def f(self):
+...         return 42
+...
+>>> derived = Derived()
+>>> base.f()
+0
+>>> derived.f()
+42
+```
 
 ### Call policy
 
@@ -482,8 +597,7 @@ struct A {
     std::string hello  () { return "Hello, is there anybody in there?"; }
 };
 
-BOOST_PYTHON_MODULE(pointer)
-{
+BOOST_PYTHON_MODULE(pointer) {
     class_<A>("A",no_init)
         .def("create",&A::create, return_value_policy<manage_new_object>())
         .staticmethod("create")
@@ -552,7 +666,7 @@ class_<FilePos>("FilePos")
     .def(self - self)           // __sub__
     .def(self - int())          // __sub__
     .def(self += int())         // __iadd__
-    .def(self -= int())			// __isub__
+    .def(self -= int())	        // __isub__
     .def(self < self);          // __lt__
 ```
 
