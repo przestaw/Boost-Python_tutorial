@@ -696,6 +696,16 @@ BOOST_PYTHON_MODULE(hello) {
 
 Please note that *operator<<* is used by the method defined by def(str(self))
 
+## Retrurning lists & tuples
+
+Boost.python supports python types tuple and lists.
+
+- *boost::python::tuple* can be created using constructor or *make_tuple(args)* call. All C++ types are supported, we can return our own classed if there was a *class_<>* wrapper creted.
+- *boost::python::list* can hold elements of any type. Lists support common operations like similarly to tuples all C++ types are supported.
+	- lists support operations like : *append, extend, insert, count, pop, remove*
+
+More details about lists and tuples can be found in [Reference Manual for Boost.Python](https://www.boost.org/doc/libs/1_66_0/libs/python/doc/html/reference/)
+
 ## Build
 
 Standard way to build boost.python program is to use bjam, used also to build boost.python itself.
