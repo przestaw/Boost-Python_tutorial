@@ -194,6 +194,7 @@ class_<Abstract, boost::noncopyable>("Abstract", no_init)
 Let's see that with some examples.
 
 - Example 1 - constructor added to class world
+	
 ```cpp
 #include <boost/python.hpp>
 using namespace boost::python;
